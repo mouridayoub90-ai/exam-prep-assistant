@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduAI Prep - Assistant Intelligent de Préparation aux Examens</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Mozilla pdf.js CDN for client-side PDF text extraction -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
+  <!-- Fichier CSS principal -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Écran d'accueil Premium & Import de Document -->
+  <div id="welcome-portal" class="welcome-portal">
+    <div class="portal-container">
+      <div class="portal-card card-glass">
+        <div class="portal-header">
+          <div class="portal-logo">
+            <i data-lucide="graduation-cap" class="portal-logo-icon"></i>
+            <span class="portal-logo-text">EduAI <span class="logo-accent">Prep</span></span>
+          </div>
+          <h1>Assistant Intelligent d'Études</h1>
+          <p class="portal-subtitle">RAG & NLP local pour optimiser votre préparation aux examens</p>
+        </div>
+
+        <div class="portal-body">
+          <!-- Nom d'utilisateur -->
+          <div class="form-group">
+            <label for="student-name-input"><i data-lucide="user"></i> Nom de l'Étudiant</label>
+            <input type="text" id="student-name-input" placeholder="Entrez votre nom..." value="Étudiant PFE">
+          </div>
+
+          <!-- Zone de Dépôt de fichier -->
+          <div class="form-group">
+            <label><i data-lucide="file-up"></i> Charger votre document de cours (PDF, TXT, MD, JSON)</label>
+            <div class="portal-drop-zone" id="portal-drop-zone">
+              <i data-lucide="file-text" class="portal-upload-icon"></i>
+              <p>Glissez-déposez votre fichier ici ou <span class="portal-browse-link" id="portal-browse-btn">parcourez vos dossiers</span></p>
+              <input type="file" id="portal-file-input" accept=".pdf,.txt,.md,.json" style="display: none;">
+              <div id="portal-file-status" class="portal-file-status hidden">
+                <i data-lucide="check-circle" class="text-green"></i> <span id="portal-filename">aucun</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="portal-divider">ou coller du texte</div>
+
+          <div class="form-group">
+            <textarea id="portal-paste-text" placeholder="Collez le contenu textuel de votre cours ici..."></textarea>
+          </div>
+
+          <div class="portal-divider">ou choisir un exemple</div>
+
+          <div class="example-docs-grid">
+            <button class="btn btn-secondary btn-example-doc" data-example="http">
+              <i data-lucide="globe"></i> Réseaux (HTTP)
+            </button>
+            <button class="btn btn-secondary btn-example-doc" data-example="newton">
+              <i data-lucide="orbit"></i> Physique (Newton)
+            </button>
+            <button class="btn btn-secondary btn-example-doc" data-example="adn">
+              <i data-lucide="dna"></i> Biologie (ADN)
+            </button>
+            <button class="btn btn-secondary btn-example-doc" data-example="matrix">
+              <i data-lucide="grid"></i> Algèbre (Matrices)
+            </button>
+          </div>
+
+          <!-- Validation -->
+          <button class="btn btn-primary btn-large btn-glow portal-submit-btn" id="portal-submit-btn">
+            <i data-lucide="play"></i> Commencer la révision
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Container (Initialement masqué) -->
+  <div class="app-container hidden" id="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-container">
+          <i data-lucide="graduation-cap" class="logo-icon"></i>
+          <span class="logo-text">EduAI <span class="logo-accent">Prep</span></span>
+        </div>
+        <p class="sidebar-subtitle">Projet PFE - IA & RAG</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-section="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Tableau de bord</span>
+        </button>
+        <button class="nav-btn" data-section="tutor">
+          <i data-lucide="bot"></i>
+          <span>Tuteur Virtuel</span>
+        </button>
+        <button class="nav-btn" data-section="quiz">
+          <i data-lucide="award"></i>
+          <span>Générateur de Quiz</span>
+        </button>
+        <button class="nav-btn" data-section="flashcards">
+          <i data-lucide="book-open-check"></i>
+          <span>Fiches de Révision</span>
+        </button>
+        <button class="nav-btn" data-section="analytics">
+          <i data-lucide="trending-up"></i>
+          <span>Analyses & Progrès</span>
+        </button>
+        <button class="nav-btn" data-section="settings">
+          <i data-lucide="settings"></i>
+          <span>Paramètres</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">E</div>
+          <div class="user-info">
+            <p class="user-name">Étudiant PFE</p>
+            <p class="user-xp"><span id="user-xp-display">0</span> XP accumulés</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Header Bar -->
+      <header class="main-header">
+        <div class="header-search">
+          <!-- Titre dynamique ou salutation -->
+          <h2 id="header-title">Bonjour ! Prêt pour une session d'étude ?</h2>
+        </div>
+        <div class="header-actions">
+          <button class="theme-toggle" id="theme-toggle-btn" title="Changer de thème">
+            <i data-lucide="sun" class="sun-icon"></i>
+            <i data-lucide="moon" class="moon-icon"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- SECTIONS (Single Page Application) -->
+      
+      <!-- 1. DASHBOARD SECTION -->
+      <section id="dashboard" class="app-section active">
+        <div class="dashboard-welcome-grid">
+          <div class="welcome-card card-gradient">
+            <div class="welcome-info">
+              <h1>Boostez vos révisions avec l'IA</h1>
+              <p>Un assistant académique intelligent combinant la recherche documentaire (RAG) et l'évaluation sémantique automatique pour vos examens.</p>
+              <div class="welcome-actions">
+                <button class="btn btn-primary" onclick="switchSection('tutor')">
+                  <i data-lucide="message-square"></i> Poser une question
+                </button>
+                <button class="btn btn-secondary" onclick="switchSection('quiz')">
+                  <i data-lucide="play"></i> Lancer un Quiz
+                </button>
+              </div>
+            </div>
+            <div class="welcome-decor">
+              <i data-lucide="brain-circuit" class="giant-decor-icon"></i>
+            </div>
+          </div>
+
+          <!-- Quick Stats Panel -->
+          <div class="quick-stats-grid">
+            <div class="stat-card">
+              <div class="stat-header">
+                <span>Quiz Complétés</span>
+                <i data-lucide="check-circle" class="text-blue"></i>
+              </div>
+              <p class="stat-number" id="stat-quizzes">0</p>
+              <span class="stat-trend text-green"><i data-lucide="trending-up"></i> +100% cette semaine</span>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-header">
+                <span>Score Moyen</span>
+                <i data-lucide="percent" class="text-purple"></i>
+              </div>
+              <p class="stat-number" id="stat-avg-score">0%</p>
+              <span class="stat-trend text-blue">Basé sur vos quiz</span>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-header">
+                <span>Matière Préférée</span>
+                <i data-lucide="book-open" class="text-pink"></i>
+              </div>
+              <p class="stat-number" id="stat-favorite-subject">-</p>
+              <span class="stat-trend text-purple">Par taux d'activité</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Course Document Upload Panel -->
+        <div class="document-upload-container card-glass">
+          <div class="upload-header">
+            <h3><i data-lucide="file-up" class="text-blue"></i> Documents de Cours Actifs</h3>
+            <span class="badge badge-purple" id="doc-active-badge">Aucun document actif</span>
+          </div>
+          <p class="upload-desc">Importez vos cours (.txt, .md, .json) ou collez directement du texte pour alimenter le Tuteur Virtuel, le Générateur de Quiz et les Fiches de Révision en temps réel.</p>
+          
+          <div class="upload-grid">
+            <div class="upload-zone" id="drop-zone">
+              <i data-lucide="cloud-upload" class="upload-icon"></i>
+              <p>Glissez-déposez votre cours ici ou <span class="browse-link" id="browse-files-btn" style="color:var(--primary); cursor:pointer; text-decoration:underline;">parcourez vos fichiers</span></p>
+              <input type="file" id="file-upload-input" accept=".txt,.md,.json" style="display: none;">
+            </div>
+            
+            <div class="paste-zone">
+              <textarea id="paste-text-input" rows="4" placeholder="Ou collez le texte de votre cours ici..."></textarea>
+            </div>
+          </div>
+          
+          <div class="upload-actions">
+            <button class="btn btn-primary" id="process-doc-btn">
+              <i data-lucide="cpu"></i> Charger le document
+            </button>
+            <button class="btn btn-secondary text-red hidden" id="clear-doc-btn">
+              <i data-lucide="trash-2"></i> Retirer le document
+            </button>
+          </div>
+          
+          <!-- Document Stats Card -->
+          <div class="doc-stats-card hidden" id="doc-stats-card">
+            <div class="doc-stats-grid">
+              <div class="doc-stat-item">
+                <span class="doc-stat-label">Nom du fichier</span>
+                <span class="doc-stat-value" id="doc-stat-name">-</span>
+              </div>
+              <div class="doc-stat-item">
+                <span class="doc-stat-label">Taille</span>
+                <span class="doc-stat-value" id="doc-stat-size">0 KB</span>
+              </div>
+              <div class="doc-stat-item">
+                <span class="doc-stat-label">Mots</span>
+                <span class="doc-stat-value" id="doc-stat-words">0</span>
+              </div>
+              <div class="doc-stat-item">
+                <span class="doc-stat-label">Paragraphes indexés</span>
+                <span class="doc-stat-value" id="doc-stat-chunks">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-details-grid">
+          <!-- Advice and recommendations -->
+          <div class="details-card recommendations-card">
+            <h3><i data-lucide="sparkles" class="text-yellow"></i> Conseils & Recommandations</h3>
+            <div class="recommendations-list" id="recommendations-container">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Recent activities -->
+          <div class="details-card activity-card">
+            <h3><i data-lucide="history" class="text-blue"></i> Activités Récentes</h3>
+            <div class="activity-timeline" id="activity-container">
+              <div class="timeline-empty">Aucune activité enregistrée. Commencez par réviser ou faire un quiz !</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. VIRTUAL TUTOR SECTION (WITH RAG MONITOR) -->
+      <section id="tutor" class="app-section">
+        <div class="tutor-layout">
+          <!-- Chat interface -->
+          <div class="chat-container">
+            <div class="chat-header">
+              <div class="chat-tutor-meta">
+                <div class="bot-avatar">🤖</div>
+                <div>
+                  <h4>Professeur Sophia</h4>
+                  <p class="bot-status"><span class="pulse-dot"></span> Prête à vous expliquer votre cours</p>
+                </div>
+              </div>
+              <div class="chat-actions">
+                <button class="chat-action-btn" id="voice-synthesis-toggle" title="Activer/Désactiver la lecture vocale">
+                  <i data-lucide="volume-2"></i>
+                </button>
+                <button class="chat-action-btn" id="clear-chat-btn" title="Vider la conversation">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="chat-messages" id="chat-messages-container">
+              <div class="message bot-message">
+                <div class="message-content">
+                  Bonjour ! Je suis Sophia, votre tuteur académique virtuel. Posez-moi une question sur vos cours (Informatique, Mathématiques, Physique ou SVT). 
+                  <br><br>
+                  Exemples :
+                  <ul>
+                    <li><em>"Comment fonctionne le protocole HTTP ?"</em></li>
+                    <li><em>"Explique-moi les lois de Newton"</em></li>
+                    <li><em>"Quelle est la structure de l'ADN ?"</em></li>
+                  </ul>
+                  Grâce à l'architecture <strong>RAG</strong>, je vais analyser votre demande, chercher dans les cours et vous formuler une réponse structurée !
+                </div>
+                <span class="message-time">À l'instant</span>
+              </div>
+            </div>
+
+            <!-- Chat shortcuts -->
+            <div class="chat-shortcuts">
+              <button class="shortcut-tag" data-query="Explique le protocole HTTP et ses codes">Protocole HTTP</button>
+              <button class="shortcut-tag" data-query="Qu'est-ce que la dérivée géométriquement ?">Dérivée (Géométrie)</button>
+              <button class="shortcut-tag" data-query="Énonce les trois lois de Newton">Lois de Newton</button>
+              <button class="shortcut-tag" data-query="Comment se fait la transcription de l'ADN ?">Transcription ADN</button>
+            </div>
+
+            <form class="chat-input-area" id="chat-form">
+              <input type="text" id="chat-input" placeholder="Posez votre question académique ici..." required autocomplete="off">
+              <button type="submit" class="btn btn-primary btn-round">
+                <i data-lucide="send"></i>
+              </button>
+            </form>
+          </div>        </div>
+      </section>
+
+      <!-- 3. QUIZ GENERATOR SECTION -->
+      <section id="quiz" class="app-section">
+        
+        <!-- Setup view -->
+        <div class="quiz-setup-card card-glass" id="quiz-setup">
+          <h2><i data-lucide="graduation-cap" class="text-purple"></i> Configurer votre session d'évaluation</h2>
+          <p>Le système générera un test sur-mesure et évaluera automatiquement vos réponses grâce à notre algorithme NLP.</p>
+          
+          <div class="setup-grid">
+            <div class="setup-field">
+              <label for="quiz-subject-select">Matière</label>
+              <select id="quiz-subject-select">
+                <option value="all">Toutes les matières</option>
+                <option value="informatique">Informatique & Réseaux</option>
+                <option value="mathematics">Mathématiques</option>
+                <option value="physique">Physique-Chimie</option>
+                <option value="svt">Sciences de la Vie et de la Terre</option>
+              </select>
+            </div>
+
+            <div class="setup-field">
+              <label for="quiz-difficulty-select">Difficulté</label>
+              <select id="quiz-difficulty-select">
+                <option value="all">Tous niveaux</option>
+                <option value="easy">Facile</option>
+                <option value="medium">Moyen</option>
+                <option value="hard">Difficile</option>
+              </select>
+            </div>
+
+            <div class="setup-field">
+              <label for="quiz-type-select">Type de Questions</label>
+              <select id="quiz-type-select">
+                <option value="all">Mixte (QCM & Questions ouvertes)</option>
+                <option value="qcm">QCM Uniquement</option>
+                <option value="open">Questions à réponse ouverte (Évaluation NLP)</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-large btn-glow" id="start-quiz-btn">
+            <i data-lucide="play-circle"></i> Générer le Quiz
+          </button>
+        </div>
+
+        <!-- Active Quiz View -->
+        <div class="quiz-active-container hidden" id="quiz-active">
+          <div class="quiz-header">
+            <div>
+              <span class="badge badge-purple" id="quiz-badge-subject">Matière</span>
+              <span class="badge badge-dark" id="quiz-badge-difficulty">Difficulté</span>
+            </div>
+            <div class="quiz-timer-container">
+              <i data-lucide="timer"></i>
+              <span id="quiz-timer">00:00</span>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="quiz-progress-bar" style="width: 0%;"></div>
+          </div>
+          <div class="progress-bar-text">
+            Question <span id="quiz-current-num">1</span> sur <span id="quiz-total-num">5</span>
+          </div>
+
+          <!-- Question Card -->
+          <div class="question-card">
+            <h3 id="quiz-question-text">Quelle est la question ?</h3>
+            
+            <!-- Dynamic Answer Box (MCQ) -->
+            <div class="mcq-options-container" id="mcq-options">
+              <!-- Dynamically populated buttons -->
+            </div>
+
+            <!-- Dynamic Answer Box (Open-ended) -->
+            <div class="open-answer-container hidden" id="open-answer-box">
+              <p class="open-answer-label">Saisissez votre réponse rédigée ci-dessous :</p>
+              <textarea id="open-answer-input" rows="5" placeholder="Expliquez en vos propres termes, en incluant les notions et mots-clés essentiels..."></textarea>
+              <p class="open-hint">
+                <i data-lucide="info"></i> Astuce : Utilisez le vocabulaire technique adéquat. Notre système NLP analysera le contenu sémantique.
+              </p>
+            </div>
+          </div>
+
+          <div class="quiz-controls">
+            <button class="btn btn-secondary" id="quiz-hint-btn">
+              <i data-lucide="help-circle"></i> Demander un indice
+            </button>
+            <button class="btn btn-primary" id="quiz-submit-btn">
+              Valider la réponse <i data-lucide="arrow-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Feedback & Correct Answer Overlay (or panel) -->
+        <div class="feedback-card hidden" id="question-feedback">
+          <div class="feedback-header" id="feedback-header-title">
+            <i data-lucide="check-circle" class="text-green"></i> Correct !
+          </div>
+          
+          <!-- Open Question NLP assessment results -->
+          <div class="nlp-evaluation-results hidden" id="nlp-results-box">
+            <h4>Analyse NLP & Évaluation Automatique</h4>
+            <div class="nlp-results-grid">
+              <div class="score-radial-container">
+                <div class="radial-progress-circle">
+                  <svg>
+                    <circle cx="50" cy="50" r="40" class="circle-bg"></circle>
+                    <circle cx="50" cy="50" r="40" class="circle-fill" id="nlp-radial-fill"></circle>
+                  </svg>
+                  <div class="radial-score-text">
+                    <span class="radial-number" id="nlp-score-number">15</span>
+                    <span class="radial-max">/20</span>
+                  </div>
+                </div>
+                <span>Note Automatique</span>
+              </div>
+              
+              <div class="nlp-detailed-metrics">
+                <div class="metric-row">
+                  <span>Similarité Sémantique Cosinus :</span>
+                  <strong id="nlp-metric-similarity">0%</strong>
+                </div>
+                <div class="metric-row">
+                  <span>Temps de traitement NLP :</span>
+                  <strong id="nlp-metric-time">0 ms</strong>
+                </div>
+                <div class="nlp-keywords-status-box">
+                  <p class="keywords-box-title">Mots-clés recherchés :</p>
+                  <div class="keywords-tags-flex" id="nlp-keywords-flex">
+                    <!-- Dynamic keyword tags -->
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="nlp-appreciation" id="nlp-appreciation-text">Excellente réponse...</p>
+          </div>
+
+          <div class="feedback-explanation">
+            <p class="explanation-title">Explication Didactique :</p>
+            <p id="feedback-explanation-text">Voici l'explication...</p>
+          </div>
+
+          <button class="btn btn-primary" id="next-question-btn">
+            Question Suivante <i data-lucide="chevron-right"></i>
+          </button>
+        </div>
+
+        <!-- Quiz Results view -->
+        <div class="quiz-results-card hidden" id="quiz-results">
+          <div class="results-trophy">🏆</div>
+          <h2>Session d'évaluation terminée !</h2>
+          <p id="quiz-results-summary">Vous avez obtenu un score de 4/5 dans la matière Informatique.</p>
+          
+          <div class="results-stats-row">
+            <div class="res-stat-box">
+              <span class="res-stat-value" id="res-xp-gained">+0</span>
+              <span class="res-stat-label">XP Gagnés</span>
+            </div>
+            <div class="res-stat-box">
+              <span class="res-stat-value" id="res-avg-accuracy">0%</span>
+              <span class="res-stat-label">Précision globale</span>
+            </div>
+            <div class="res-stat-box">
+              <span class="res-stat-value" id="res-time-spent">00:00</span>
+              <span class="res-stat-label">Temps total</span>
+            </div>
+          </div>
+
+          <div class="results-actions">
+            <button class="btn btn-primary" onclick="switchSection('quiz')">
+              <i data-lucide="refresh-cw"></i> Faire un autre quiz
+            </button>
+            <button class="btn btn-secondary" onclick="switchSection('dashboard')">
+              <i data-lucide="home"></i> Retour au tableau de bord
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. REVISION FLASHCARDS SECTION -->
+      <section id="flashcards" class="app-section">
+        <div class="flashcards-intro">
+          <h2><i data-lucide="book-open-check" class="text-pink"></i> Fiches de Révision Interactives</h2>
+          <p>Entraînez votre mémoire active. Cliquez sur une carte pour la retourner et voir l'explication ou la formule correspondante.</p>
+          
+          <div class="subject-filters">
+            <button class="filter-btn active" data-subject="all">Toutes</button>
+            <button class="filter-btn" data-subject="informatique">Informatique</button>
+            <button class="filter-btn" data-subject="mathematics">Mathématiques</button>
+            <button class="filter-btn" data-subject="physique">Physique</button>
+            <button class="filter-btn" data-subject="svt">SVT</button>
+          </div>
+        </div>
+
+        <div class="flashcards-grid" id="flashcards-grid-container">
+          <!-- Dynamically populated cards -->
+        </div>
+      </section>
+
+      <!-- 5. ANALYTICS & PROGRESS SECTION -->
+      <section id="analytics" class="app-section">
+        <div class="analytics-layout">
+          <!-- Left side: graphs -->
+          <div class="analytics-main card-glass">
+            <h3>Graphique d'activité de révision</h3>
+            <div class="chart-container-wrapper">
+              <canvas id="performance-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Right side: statistics list -->
+          <div class="analytics-sidebar">
+            <div class="card-glass mastery-card">
+              <h3>Maîtrise par Matière</h3>
+              <div class="mastery-list" id="mastery-list-container">
+                <!-- Dynamically populated bars -->
+              </div>
+            </div>
+
+            <div class="card-glass details-card">
+              <h3>Succès Débloqués</h3>
+              <div class="achievements-list">
+                <div class="achievement-item locked" id="ach-1">
+                  <div class="ach-icon">🥇</div>
+                  <div class="ach-info">
+                    <h5>Premier Pas</h5>
+                    <p>Compléter le premier quiz</p>
+                  </div>
+                </div>
+                <div class="achievement-item locked" id="ach-2">
+                  <div class="ach-icon">🧠</div>
+                  <div class="ach-info">
+                    <h5>Savant Local</h5>
+                    <p>Atteindre une note supérieure à 16/20 en évaluation NLP</p>
+                  </div>
+                </div>
+                <div class="achievement-item locked" id="ach-3">
+                  <div class="ach-icon">⚡</div>
+                  <div class="ach-info">
+                    <h5>Super RAG</h5>
+                    <p>Effectuer 10 requêtes de recherche documentaire</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. SETTINGS SECTION -->
+      <section id="settings" class="app-section">
+        <div class="settings-container">
+          
+          <!-- API Key Box -->
+          <div class="card-glass settings-card">
+            <h3><i data-lucide="key" class="text-yellow"></i> Activation de l'IA Dynamique (Gemini API)</h3>
+            <p class="settings-desc">
+              Par défaut, l'application fonctionne avec notre <strong>moteur RAG & NLP local 100% hors-ligne</strong>. Pour débloquer des explications dynamiques illimitées de l'IA (en injectant les chunks de cours dans le contexte), vous pouvez renseigner votre clé API Gemini personnelle.
+            </p>
+            
+            <div class="form-group">
+              <label for="gemini-api-key">Clé API Gemini</label>
+              <div class="api-key-input-container">
+                <input type="password" id="gemini-api-key" placeholder="AIzaSy...">
+                <button class="btn btn-secondary" id="toggle-key-visibility">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+              <p class="api-key-help text-purple">
+                La clé est stockée localement dans votre navigateur (`localStorage`) et n'est jamais envoyée vers un serveur tiers.
+              </p>
+            </div>
+
+            <div class="settings-actions">
+              <button class="btn btn-primary" id="save-api-key-btn">Enregistrer la clé API</button>
+              <button class="btn btn-secondary text-red" id="clear-api-key-btn">Supprimer la clé</button>
+            </div>
+          </div>
+          <!-- Student Profile Customization Card -->
+          <div class="card-glass settings-card">
+            <h3><i data-lucide="user" class="text-purple"></i> Profil de l'Étudiant</h3>
+            <p class="settings-desc">Personnalisez votre nom d'utilisateur qui s'affichera dans le tuteur virtuel et le tableau de bord.</p>
+            
+            <div class="form-group" style="margin-bottom:15px;">
+              <label for="student-username-input" style="display:block; margin-bottom:5px; font-size:13px; font-weight:600;">Nom d'utilisateur</label>
+              <input type="text" id="student-username-input" placeholder="Étudiant PFE" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary);">
+            </div>
+            
+            <div class="settings-actions">
+              <button class="btn btn-primary" id="save-username-btn">Enregistrer le profil</button>
+            </div>
+          </div>
+
+          <!-- Reset / Demo configurations -->
+          <div class="card-glass settings-card">
+            <h3><i data-lucide="database" class="text-blue"></i> Données d'étude & Profil</h3>
+            <p class="settings-desc">Gérez votre progression d'étude ou réinitialisez le simulateur pour une nouvelle soutenance de projet.</p>
+            
+            <div class="settings-row-actions">
+              <button class="btn btn-secondary" id="load-demo-data-btn">
+                <i data-lucide="sparkles"></i> Charger des données démo (Stats & XP)
+              </button>
+              <button class="btn btn-danger" id="reset-profile-btn">
+                <i data-lucide="alert-triangle"></i> Réinitialiser tout le profil
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Dialog / Alert Box (Custom Toast) -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Charger les données de la base de données locale -->
+  <script src="data.js"></script>
+  <!-- Charger le pipeline NLP et RAG -->
+  <script src="nlp.js"></script>
+  <!-- Fichier JS applicatif -->
+  <script src="app.js"></script>
+</body>
+</html>
