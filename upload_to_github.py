@@ -17,14 +17,37 @@ FILES_TO_UPLOAD = [
 def upload_file_to_github(username, repo, token, filepath, file_content):
     url = f"https://api.github.com/repos/{username}/{repo}/contents/{filepath}"
     
+    # Check if the file already exists on GitHub to retrieve its SHA (required for updates)
+    sha = None
+    check_req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        },
+        method="GET"
+    )
+    try:
+        with urllib.request.urlopen(check_req) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            sha = res_data.get("sha")
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            print(f"⚠️ Warning checking existing {filepath}: HTTP {e.code}")
+    except Exception as e:
+        print(f"⚠️ Warning checking existing {filepath}: {e}")
+
     # Base64 encode the file content
     encoded_content = base64.b64encode(file_content.encode("utf-8")).decode("utf-8")
     
     data = {
-        "message": f"Initial commit of {filepath} via API",
+        "message": f"Upload of {filepath} via API",
         "content": encoded_content
     }
-    
+    if sha:
+        data["sha"] = sha
+        data["message"] = f"Update of {filepath} via API"
+        
     req_data = json.dumps(data).encode("utf-8")
     
     req = urllib.request.Request(
@@ -41,10 +64,10 @@ def upload_file_to_github(username, repo, token, filepath, file_content):
     try:
         with urllib.request.urlopen(req) as response:
             res_data = json.loads(response.read().decode("utf-8"))
-            print(f"✅ Successfully uploaded: {filepath}")
+            action = "updated" if sha else "uploaded"
+            print(f"✅ Successfully {action}: {filepath}")
             return True
     except urllib.error.HTTPError as e:
-        # If it already exists, we might need a SHA to update, but this is a new repo upload script
         error_msg = e.read().decode("utf-8")
         print(f"❌ Failed to upload {filepath}: HTTP {e.code} - {error_msg}")
         return False
